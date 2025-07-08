@@ -149,7 +149,7 @@ def main():
             logging_steps=10,
             save_steps=100,
             eval_steps=100,
-            evaluation_strategy="steps",
+            eval_strategy="steps",
             save_strategy="steps",
             load_best_model_at_end=True,
             metric_for_best_model="eval_loss",

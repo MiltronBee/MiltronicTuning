@@ -7,6 +7,8 @@ from datetime import datetime
 
 # Disable DeepSpeed to avoid CUDA_HOME issues
 os.environ["DISABLE_DEEPSPEED"] = "1"
+os.environ["ACCELERATE_USE_DEEPSPEED"] = "false"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # Use only first GPU to avoid distributed issues
 from transformers import (
     AutoTokenizer, AutoModelForCausalLM, 
     TrainingArguments, Trainer, DataCollatorForLanguageModeling
@@ -161,6 +163,8 @@ def main():
             label_names=["labels"],
             dataloader_pin_memory=True,
             group_by_length=True,
+            deepspeed=None,  # Explicitly disable DeepSpeed
+            local_rank=-1,   # Disable distributed training
         )
     
         # Data collator

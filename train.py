@@ -52,15 +52,6 @@ def tokenize_function(examples, tokenizer, max_length=512):
 
 def main():
     try:
-        # Initialize distributed training if available
-        local_rank = int(os.environ.get("LOCAL_RANK", -1))
-        world_size = int(os.environ.get("WORLD_SIZE", 1))
-        
-        if local_rank != -1:
-            torch.distributed.init_process_group(backend="nccl")
-            torch.cuda.set_device(local_rank)
-            logger.info(f"🌍 Distributed training: rank {local_rank}/{world_size}")
-        
         # Check available GPUs
         device_count = torch.cuda.device_count()
         logger.info(f"🎮 Available CUDA devices: {device_count}")
@@ -69,19 +60,17 @@ def main():
             logger.error("No CUDA devices found! Training requires GPU.")
             return
     
-        # Initialize wandb only on rank 0
-        if local_rank <= 0:
-            wandb.init(
-                project="mistral-7b-finetune",
-                name=f"mistral-training-{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                config={
-                    "model": "mistralai/Mistral-7B-Instruct-v0.2",
-                    "dataset": "custom_instruct",
-                    "method": "LoRA",
-                    "gpu_count": device_count,
-                    "world_size": world_size
-                }
-            )
+        # Initialize wandb
+        wandb.init(
+            project="mistral-7b-finetune",
+            name=f"mistral-training-{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            config={
+                "model": "mistralai/Mistral-7B-Instruct-v0.2",
+                "dataset": "custom_instruct",
+                "method": "LoRA",
+                "gpu_count": device_count
+            }
+        )
     
     # Configuration
     model_path = "./models/mistral-7b-instruct"
@@ -150,9 +139,9 @@ def main():
             output_dir=output_dir,
             overwrite_output_dir=True,
             num_train_epochs=3,
-            per_device_train_batch_size=4,
-            per_device_eval_batch_size=4,
-            gradient_accumulation_steps=4,
+            per_device_train_batch_size=2,
+            per_device_eval_batch_size=2,
+            gradient_accumulation_steps=8,
             warmup_steps=100,
             max_steps=1000,
             learning_rate=2e-4,
@@ -165,15 +154,13 @@ def main():
             load_best_model_at_end=True,
             metric_for_best_model="eval_loss",
             greater_is_better=False,
-            report_to="wandb" if local_rank <= 0 else "none",
+            report_to="wandb",
             run_name=f"mistral-finetune-{datetime.now().strftime('%Y%m%d_%H%M%S')}",
             dataloader_num_workers=4,
             remove_unused_columns=False,
             label_names=["labels"],
-            ddp_find_unused_parameters=False,
             dataloader_pin_memory=True,
             group_by_length=True,
-            local_rank=local_rank,
         )
     
     # Data collator
@@ -206,15 +193,13 @@ def main():
         model.save_pretrained(f"{output_dir}/lora_adapter")
         
         logger.info("✅ Training completed successfully!")
-        if local_rank <= 0:
-            wandb.finish()
+        wandb.finish()
         
     except Exception as e:
         logger.error(f"❌ Training failed with error: {str(e)}")
         import traceback
         traceback.print_exc()
-        if local_rank <= 0:
-            wandb.finish()
+        wandb.finish()
         raise
 
 if __name__ == "__main__":

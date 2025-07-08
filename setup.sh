@@ -107,13 +107,10 @@ echo "🎮 Detected $GPU_COUNT GPU(s)"
 # Set environment variables to disable DeepSpeed
 export DISABLE_DEEPSPEED=1
 
-if [ "$GPU_COUNT" -gt 1 ]; then
-    echo "🚀 Using multi-GPU training with $GPU_COUNT GPUs (H100 optimized)"
-    nohup torchrun --nproc_per_node=$GPU_COUNT train.py > $LOG_FILE 2>&1 &
-else
-    echo "🚀 Using single GPU training"
-    nohup python train.py > $LOG_FILE 2>&1 &
-fi
+# For debugging, let's start with single GPU and check logs
+echo "🚀 Starting training (single GPU for debugging)"
+echo "📝 Check logs with: tail -f $LOG_FILE"
+nohup python train.py > $LOG_FILE 2>&1 &
 
 TRAIN_PID=$!
 

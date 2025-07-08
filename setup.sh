@@ -23,7 +23,7 @@ echo "⚡ Installing dependencies..."
 pip install --upgrade pip
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 pip install transformers datasets peft accelerate bitsandbytes
-pip install deepspeed wandb tqdm huggingface_hub
+pip install wandb tqdm huggingface_hub
 
 echo "📁 Creating directories..."
 mkdir -p data models logs
@@ -65,16 +65,19 @@ tokenizer = AutoTokenizer.from_pretrained('$MODEL_NAME')
 model = AutoModelForCausalLM.from_pretrained(
     '$MODEL_NAME',
     torch_dtype=torch.float16,
-    device_map='auto'
+    device_map='cpu'
 )
 
 print('Saving model locally...')
 tokenizer.save_pretrained('./models/mistral-7b-instruct')
 model.save_pretrained('./models/mistral-7b-instruct')
 print('✅ Model downloaded and saved!')
+del model
+torch.cuda.empty_cache()
 "
 fi
 
+echo ""
 echo "🔐 Setting up wandb..."
 if [ -n "$WANDB_API_KEY" ]; then
     echo "Using WANDB_API_KEY environment variable"
@@ -86,6 +89,7 @@ else
     read -p "Enter your WandB API key: " WANDB_API_KEY
     wandb login --relogin "$WANDB_API_KEY"
 fi
+echo "✅ WandB authentication complete"
 
 echo "🏃 Starting training in background..."
 GPU_COUNT=$(nvidia-smi -L | wc -l)

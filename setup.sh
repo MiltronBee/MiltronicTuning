@@ -62,8 +62,9 @@ else
 fi
 
 echo "🤖 Checking/downloading base model..."
-if [ -d "./models/mistral-7b-instruct" ] && [ -f "./models/mistral-7b-instruct/config.json" ]; then
+if [ -d "./models/mistral-7b-instruct" ] && [ -f "./models/mistral-7b-instruct/config.json" ] && [ -f "./models/mistral-7b-instruct/pytorch_model.bin" -o -f "./models/mistral-7b-instruct/pytorch_model-00001-of-00002.bin" ]; then
     echo "✅ Model already exists: ./models/mistral-7b-instruct"
+    echo "Model size: $(du -sh ./models/mistral-7b-instruct | cut -f1)"
 else
     echo "📥 Downloading Mistral-7B-Instruct model..."
     python -c "

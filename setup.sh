@@ -23,7 +23,7 @@ echo "⚡ Installing dependencies..."
 pip install --upgrade pip
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 pip install transformers datasets peft accelerate bitsandbytes
-pip install deepspeed wandb tqdm
+pip install deepspeed wandb tqdm huggingface_hub
 
 echo "📁 Creating directories..."
 mkdir -p data models logs
@@ -51,13 +51,29 @@ model.save_pretrained('./models/mistral-7b-instruct')
 print('✅ Model downloaded and saved!')
 "
 
+echo "🔐 Setting up Hugging Face authentication..."
+if [ -n "$HF_TOKEN" ]; then
+    echo "Using HF_TOKEN environment variable"
+    huggingface-cli login --token "$HF_TOKEN"
+else
+    echo "🔑 Hugging Face token required for Mistral-7B-Instruct access"
+    echo "Get your token from: https://huggingface.co/settings/tokens"
+    echo "Also request access to: https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2"
+    echo ""
+    read -p "Enter your Hugging Face token: " HF_TOKEN
+    huggingface-cli login --token "$HF_TOKEN"
+fi
+
 echo "🔐 Setting up wandb..."
 if [ -n "$WANDB_API_KEY" ]; then
     echo "Using WANDB_API_KEY environment variable"
     wandb login --relogin "$WANDB_API_KEY"
 else
-    echo "Please login to wandb if not already done:"
-    wandb login
+    echo "📊 WandB API key required for training monitoring"
+    echo "Get your key from: https://wandb.ai/authorize"
+    echo ""
+    read -p "Enter your WandB API key: " WANDB_API_KEY
+    wandb login --relogin "$WANDB_API_KEY"
 fi
 
 echo "🏃 Starting training in background..."

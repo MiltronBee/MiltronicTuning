@@ -108,8 +108,8 @@ echo "🎮 Detected $GPU_COUNT GPU(s)"
 export DISABLE_DEEPSPEED=1
 
 if [ "$GPU_COUNT" -gt 1 ]; then
-    echo "🚀 Using multi-GPU training with $GPU_COUNT GPUs"
-    nohup python -m torch.distributed.launch --nproc_per_node=$GPU_COUNT train.py > $LOG_FILE 2>&1 &
+    echo "🚀 Using multi-GPU training with $GPU_COUNT GPUs (H100 optimized)"
+    nohup torchrun --nproc_per_node=$GPU_COUNT train.py > $LOG_FILE 2>&1 &
 else
     echo "🚀 Using single GPU training"
     nohup python train.py > $LOG_FILE 2>&1 &

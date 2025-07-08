@@ -51,9 +51,14 @@ def tokenize_function(examples, tokenizer, max_length=512):
     )
 
 def main():
-    # Check available GPUs
-    device_count = torch.cuda.device_count()
-    logger.info(f"🎮 Available CUDA devices: {device_count}")
+    try:
+        # Check available GPUs
+        device_count = torch.cuda.device_count()
+        logger.info(f"🎮 Available CUDA devices: {device_count}")
+        
+        if device_count == 0:
+            logger.error("No CUDA devices found! Training requires GPU.")
+            return
     
     # Initialize wandb
     wandb.init(
@@ -176,20 +181,27 @@ def main():
         tokenizer=tokenizer,
     )
     
-    # Start training
-    logger.info("🏃 Starting training...")
-    trainer.train()
-    
-    # Save final model
-    logger.info("💾 Saving final model...")
-    trainer.save_model()
-    tokenizer.save_pretrained(output_dir)
-    
-    # Save LoRA adapter
-    model.save_pretrained(f"{output_dir}/lora_adapter")
-    
-    logger.info("✅ Training completed successfully!")
-    wandb.finish()
+        # Start training
+        logger.info("🏃 Starting training...")
+        trainer.train()
+        
+        # Save final model
+        logger.info("💾 Saving final model...")
+        trainer.save_model()
+        tokenizer.save_pretrained(output_dir)
+        
+        # Save LoRA adapter
+        model.save_pretrained(f"{output_dir}/lora_adapter")
+        
+        logger.info("✅ Training completed successfully!")
+        wandb.finish()
+        
+    except Exception as e:
+        logger.error(f"❌ Training failed with error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        wandb.finish()
+        raise
 
 if __name__ == "__main__":
     main()

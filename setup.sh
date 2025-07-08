@@ -28,12 +28,35 @@ pip install deepspeed wandb tqdm huggingface_hub
 echo "📁 Creating directories..."
 mkdir -p data models logs
 
-echo "📥 Downloading training data..."
-echo "Copying training data from $DATA_SOURCE..."
-scp $DATA_SOURCE ./data/$DATA_FILE
+echo "🔐 Setting up Hugging Face authentication..."
+if [ -n "$HF_TOKEN" ]; then
+    echo "Using HF_TOKEN environment variable"
+    huggingface-cli login --token "$HF_TOKEN"
+else
+    echo "🔑 Hugging Face token required for Mistral-7B-Instruct access"
+    echo "Get your token from: https://huggingface.co/settings/tokens"
+    echo "Also request access to: https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2"
+    echo ""
+    read -p "Enter your Hugging Face token: " HF_TOKEN
+    huggingface-cli login --token "$HF_TOKEN"
+fi
 
-echo "🤖 Downloading base model..."
-python -c "
+echo "📥 Checking training data..."
+if [ -f "./data/$DATA_FILE" ]; then
+    echo "✅ Training data already exists: ./data/$DATA_FILE"
+    echo "File size: $(du -h ./data/$DATA_FILE | cut -f1)"
+else
+    echo "📥 Downloading training data from $DATA_SOURCE..."
+    scp $DATA_SOURCE ./data/$DATA_FILE
+    echo "✅ Training data downloaded: ./data/$DATA_FILE"
+fi
+
+echo "🤖 Checking/downloading base model..."
+if [ -d "./models/mistral-7b-instruct" ] && [ -f "./models/mistral-7b-instruct/config.json" ]; then
+    echo "✅ Model already exists: ./models/mistral-7b-instruct"
+else
+    echo "📥 Downloading Mistral-7B-Instruct model..."
+    python -c "
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
@@ -50,18 +73,6 @@ tokenizer.save_pretrained('./models/mistral-7b-instruct')
 model.save_pretrained('./models/mistral-7b-instruct')
 print('✅ Model downloaded and saved!')
 "
-
-echo "🔐 Setting up Hugging Face authentication..."
-if [ -n "$HF_TOKEN" ]; then
-    echo "Using HF_TOKEN environment variable"
-    huggingface-cli login --token "$HF_TOKEN"
-else
-    echo "🔑 Hugging Face token required for Mistral-7B-Instruct access"
-    echo "Get your token from: https://huggingface.co/settings/tokens"
-    echo "Also request access to: https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2"
-    echo ""
-    read -p "Enter your Hugging Face token: " HF_TOKEN
-    huggingface-cli login --token "$HF_TOKEN"
 fi
 
 echo "🔐 Setting up wandb..."

@@ -29,8 +29,13 @@ echo "📁 Creating directories..."
 mkdir -p data models logs
 
 echo "🔐 Setting up Hugging Face authentication..."
+# Load existing .env if it exists
+if [ -f ".env" ]; then
+    source .env
+fi
+
 if [ -n "$HF_TOKEN" ]; then
-    echo "Using HF_TOKEN environment variable"
+    echo "Using existing HF_TOKEN"
     huggingface-cli login --token "$HF_TOKEN"
 else
     echo "🔑 Hugging Face token required for Mistral-7B-Instruct access"
@@ -38,6 +43,11 @@ else
     echo "Also request access to: https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2"
     echo ""
     read -p "Enter your Hugging Face token: " HF_TOKEN
+    
+    # Save to .env file
+    echo "HF_TOKEN=$HF_TOKEN" > .env
+    echo "✅ Token saved to .env file"
+    
     huggingface-cli login --token "$HF_TOKEN"
 fi
 
@@ -57,36 +67,34 @@ if [ -d "./models/mistral-7b-instruct" ] && [ -f "./models/mistral-7b-instruct/c
 else
     echo "📥 Downloading Mistral-7B-Instruct model..."
     python -c "
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
+from huggingface_hub import snapshot_download
+import os
 
 print('Downloading Mistral-7B-Instruct model...')
-tokenizer = AutoTokenizer.from_pretrained('$MODEL_NAME')
-model = AutoModelForCausalLM.from_pretrained(
-    '$MODEL_NAME',
-    torch_dtype=torch.float16,
-    device_map='cpu'
+snapshot_download(
+    repo_id='$MODEL_NAME',
+    local_dir='./models/mistral-7b-instruct',
+    local_dir_use_symlinks=False
 )
-
-print('Saving model locally...')
-tokenizer.save_pretrained('./models/mistral-7b-instruct')
-model.save_pretrained('./models/mistral-7b-instruct')
 print('✅ Model downloaded and saved!')
-del model
-torch.cuda.empty_cache()
 "
 fi
 
 echo ""
 echo "🔐 Setting up wandb..."
 if [ -n "$WANDB_API_KEY" ]; then
-    echo "Using WANDB_API_KEY environment variable"
+    echo "Using existing WANDB_API_KEY"
     wandb login --relogin "$WANDB_API_KEY"
 else
     echo "📊 WandB API key required for training monitoring"
     echo "Get your key from: https://wandb.ai/authorize"
     echo ""
     read -p "Enter your WandB API key: " WANDB_API_KEY
+    
+    # Append to .env file
+    echo "WANDB_API_KEY=$WANDB_API_KEY" >> .env
+    echo "✅ WandB key saved to .env file"
+    
     wandb login --relogin "$WANDB_API_KEY"
 fi
 echo "✅ WandB authentication complete"
@@ -94,6 +102,9 @@ echo "✅ WandB authentication complete"
 echo "🏃 Starting training in background..."
 GPU_COUNT=$(nvidia-smi -L | wc -l)
 echo "🎮 Detected $GPU_COUNT GPU(s)"
+
+# Set environment variables to disable DeepSpeed
+export DISABLE_DEEPSPEED=1
 
 if [ "$GPU_COUNT" -gt 1 ]; then
     echo "🚀 Using multi-GPU training with $GPU_COUNT GPUs"

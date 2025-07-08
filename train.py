@@ -4,6 +4,9 @@ import json
 import torch
 import wandb
 from datetime import datetime
+
+# Disable DeepSpeed to avoid CUDA_HOME issues
+os.environ["DISABLE_DEEPSPEED"] = "1"
 from transformers import (
     AutoTokenizer, AutoModelForCausalLM, 
     TrainingArguments, Trainer, DataCollatorForLanguageModeling

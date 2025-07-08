@@ -11,6 +11,10 @@ DATA_FILE="training_data.jsonl"
 MODEL_NAME="mistralai/Mistral-7B-Instruct-v0.2"
 LOG_FILE="logs/training.log"
 
+echo "🔧 Installing system dependencies..."
+sudo apt update
+sudo apt install -y python3-pip python3-venv python3-dev build-essential
+
 echo "📦 Creating virtual environment..."
 python3 -m venv $VENV_NAME
 source $VENV_NAME/bin/activate
@@ -48,8 +52,13 @@ print('✅ Model downloaded and saved!')
 "
 
 echo "🔐 Setting up wandb..."
-echo "Please login to wandb if not already done:"
-wandb login
+if [ -n "$WANDB_API_KEY" ]; then
+    echo "Using WANDB_API_KEY environment variable"
+    wandb login --relogin "$WANDB_API_KEY"
+else
+    echo "Please login to wandb if not already done:"
+    wandb login
+fi
 
 echo "🏃 Starting training in background..."
 GPU_COUNT=$(nvidia-smi -L | wc -l)

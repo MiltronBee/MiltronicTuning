@@ -72,67 +72,67 @@ def main():
             }
         )
     
-    # Configuration
-    model_path = "./models/mistral-7b-instruct"
-    data_path = "./data/training_data.jsonl"
-    output_dir = "./models/mistral-7b-finetuned"
+        # Configuration
+        model_path = "./models/mistral-7b-instruct"
+        data_path = "./data/training_data.jsonl"
+        output_dir = "./models/mistral-7b-finetuned"
     
-    logger.info("🚀 Starting Mistral-7B fine-tuning...")
+        logger.info("🚀 Starting Mistral-7B fine-tuning...")
+        
+        # Load tokenizer and model
+        logger.info("Loading tokenizer and model...")
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        tokenizer.pad_token = tokenizer.eos_token
+        
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            torch_dtype=torch.float16,
+            device_map="auto",
+            trust_remote_code=True
+        )
+        
+        # LoRA configuration
+        lora_config = LoraConfig(
+            task_type=TaskType.CAUSAL_LM,
+            inference_mode=False,
+            r=16,
+            lora_alpha=32,
+            lora_dropout=0.1,
+            target_modules=["q_proj", "v_proj", "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+        )
+        
+        model = get_peft_model(model, lora_config)
+        model.print_trainable_parameters()
     
-    # Load tokenizer and model
-    logger.info("Loading tokenizer and model...")
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    tokenizer.pad_token = tokenizer.eos_token
-    
-    model = AutoModelForCausalLM.from_pretrained(
-        model_path,
-        torch_dtype=torch.float16,
-        device_map="auto",
-        trust_remote_code=True
-    )
-    
-    # LoRA configuration
-    lora_config = LoraConfig(
-        task_type=TaskType.CAUSAL_LM,
-        inference_mode=False,
-        r=16,
-        lora_alpha=32,
-        lora_dropout=0.1,
-        target_modules=["q_proj", "v_proj", "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
-    )
-    
-    model = get_peft_model(model, lora_config)
-    model.print_trainable_parameters()
-    
-    # Load and prepare data
-    logger.info("Loading training data...")
-    raw_data = load_jsonl_data(data_path)
-    
-    # Format data
-    formatted_data = []
-    for item in raw_data:
-        formatted_text = format_instruction(item)
-        formatted_data.append({"text": formatted_text})
-    
-    # Create dataset
-    dataset = Dataset.from_list(formatted_data)
-    
-    # Tokenize dataset
-    tokenized_dataset = dataset.map(
-        lambda examples: tokenize_function(examples, tokenizer),
-        batched=True,
-        remove_columns=dataset.column_names
-    )
-    
-    # Split dataset
-    train_size = int(0.9 * len(tokenized_dataset))
-    eval_size = len(tokenized_dataset) - train_size
-    
-    train_dataset = tokenized_dataset.select(range(train_size))
-    eval_dataset = tokenized_dataset.select(range(train_size, train_size + eval_size))
-    
-    logger.info(f"Training samples: {len(train_dataset)}")
-    logger.info(f"Evaluation samples: {len(eval_dataset)}")
+        # Load and prepare data
+        logger.info("Loading training data...")
+        raw_data = load_jsonl_data(data_path)
+        
+        # Format data
+        formatted_data = []
+        for item in raw_data:
+            formatted_text = format_instruction(item)
+            formatted_data.append({"text": formatted_text})
+        
+        # Create dataset
+        dataset = Dataset.from_list(formatted_data)
+        
+        # Tokenize dataset
+        tokenized_dataset = dataset.map(
+            lambda examples: tokenize_function(examples, tokenizer),
+            batched=True,
+            remove_columns=dataset.column_names
+        )
+        
+        # Split dataset
+        train_size = int(0.9 * len(tokenized_dataset))
+        eval_size = len(tokenized_dataset) - train_size
+        
+        train_dataset = tokenized_dataset.select(range(train_size))
+        eval_dataset = tokenized_dataset.select(range(train_size, train_size + eval_size))
+        
+        logger.info(f"Training samples: {len(train_dataset)}")
+        logger.info(f"Evaluation samples: {len(eval_dataset)}")
     
         # Training arguments
         training_args = TrainingArguments(
@@ -163,22 +163,22 @@ def main():
             group_by_length=True,
         )
     
-    # Data collator
-    data_collator = DataCollatorForLanguageModeling(
-        tokenizer=tokenizer,
-        mlm=False,
-        pad_to_multiple_of=8
-    )
-    
-    # Create trainer
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
-        data_collator=data_collator,
-        tokenizer=tokenizer,
-    )
+        # Data collator
+        data_collator = DataCollatorForLanguageModeling(
+            tokenizer=tokenizer,
+            mlm=False,
+            pad_to_multiple_of=8
+        )
+        
+        # Create trainer
+        trainer = Trainer(
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
+            data_collator=data_collator,
+            tokenizer=tokenizer,
+        )
     
         # Start training
         logger.info("🏃 Starting training...")

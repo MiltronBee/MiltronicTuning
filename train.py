@@ -1,14 +1,32 @@
 #!/usr/bin/env python3
 import os
 import json
+import sys
+
+# Disable DeepSpeed to avoid CUDA_HOME issues - must be set before any imports
+os.environ["DISABLE_DEEPSPEED"] = "1"
+os.environ["ACCELERATE_USE_DEEPSPEED"] = "false"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # Use only first GPU to avoid distributed issues
+
+# Create a mock deepspeed module to prevent import errors
+import sys
+from unittest.mock import MagicMock
+
+# Create mock deepspeed modules
+sys.modules['deepspeed'] = MagicMock()
+sys.modules['deepspeed.ops'] = MagicMock()
+sys.modules['deepspeed.ops.op_builder'] = MagicMock()
+sys.modules['deepspeed.ops.op_builder.builder'] = MagicMock()
+
+# Mock the specific classes and functions that cause issues
+mock_deepspeed = MagicMock()
+mock_deepspeed.DeepSpeedEngine = MagicMock()
+sys.modules['deepspeed'] = mock_deepspeed
+
 import torch
 import wandb
 from datetime import datetime
 
-# Disable DeepSpeed to avoid CUDA_HOME issues
-os.environ["DISABLE_DEEPSPEED"] = "1"
-os.environ["ACCELERATE_USE_DEEPSPEED"] = "false"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # Use only first GPU to avoid distributed issues
 from transformers import (
     AutoTokenizer, AutoModelForCausalLM, 
     TrainingArguments, Trainer, DataCollatorForLanguageModeling
